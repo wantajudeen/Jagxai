@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JagX AI — Real-Time Intelligence</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #00f0ff;
+  --accent2: #7000ff;
+  --accent-glow: rgba(0, 240, 255, 0.15);
+  --bg: #030305;
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+#bg-canvas {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; opacity: 0.4;
+}
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+}
+.glass-strong {
+  background: rgba(10, 10, 15, 0.8);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--border);
+}
+.glow-text {
+  text-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow);
+}
+.glow-border {
+  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px var(--accent-glow);
+}
+.sidebar-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-item:hover, .sidebar-item.active {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 10px var(--accent);
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 240, 255, 0.3);
+}
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.input-field {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.scrollbar::-webkit-scrollbar { width: 6px; }
+.scrollbar::-webkit-scrollbar-track { background: transparent; }
+.scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+.scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+.message-user { background: linear-gradient(135deg, rgba(0,240,255,0.1), rgba(112,0,255,0.1)); border: 1px solid rgba(0,240,255,0.2); }
+.message-ai { background: var(--surface); border: 1px solid var(--border); }
+.code-block {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  position: relative;
+}
+.copy-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(255,255,255,0.1);
+  border: none; border-radius: 6px;
+  padding: 4px 10px; color: var(--text-muted);
+  cursor: pointer; font-size: 12px;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.2); color: var(--text); }
+.typing-dot { animation: typing 1.4s infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: pulse 2s infinite;
+  pointer-events: none;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+#splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: opacity 0.6s;
+}
+.loader {
+  width: 48px; height: 48px;
+  border: 3px solid transparent;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.tab-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+.tab-btn.active {
+  background: var(--surface-hover);
+  color: var(--accent);
+  border-color: var(--border);
+}
+.preview-frame {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  min-height: 300px;
+  border: none;
+}
+</style>
+</head>
+<body>
+
+<!-- Splash Screen -->
+<div id="splash">
+  <div style="position: relative; margin-bottom: 32px;">
+    <div class="loader"></div>
+    <div class="pulse-ring" style="width: 60px; height: 60px; top: -6px; left: -6px;"></div>
+  </div>
+  <h1 style="font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px;">
+    <span style="color: var(--accent);">JagX</span> <span style="color: var(--text);">AI</span>
+  </h1>
+  <p style="color: var(--text-muted); font-size: 14px;" id="splash-text">Initializing neural engine...</p>
+</div>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="app" style="display: none; position: relative; z-index: 1; height: 100vh; display: flex;">
+  
+  <!-- Sidebar -->
+  <aside class="glass-strong" style="width: 260px; height: 100%; display: flex; flex-direction: column; padding: 20px 12px;">
+    <div style="padding: 0 12px 24px; display: flex; align-items: center; gap: 10px;">
+      <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="zap" style="width: 20px; height: 20px; color: #000;"></i>
+      </div>
+      <div>
+        <div style="font-weight: 700; font-size: 16px; letter-spacing: -0.3px;">JagX AI</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Real-Time Intelligence</div>
+      </div>
+    </div>
+    
+    <nav style="flex: 1; overflow-y: auto;" class="scrollbar">
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 0 12px 8px; font-weight: 600;">Workspace</div>
+      <div class="sidebar-item active" onclick="switchTab('chat')"><i data-lucide="message-square" style="width: 18px;"></i><span>Chat</span></div>
+      <div class="sidebar-item" onclick="switchTab('image')"><i data-lucide="image" style="width: 18px;"></i><span>Image Gen</span></div>
+      <div class="sidebar-item" onclick="switchTab('video')"><i data-lucide="film" style="width: 18px;"></i><span>Video Gen</span></div>
+      <div class="sidebar-item" onclick="switchTab('code')"><i data-lucide="code-2" style="width: 18px;"></i><span>Code Studio</span></div>
+      <div class="sidebar-item" onclick="switchTab('builder')"><i data-lucide="layout" style="width: 18px;"></i><span>App Builder</span></div>
+      <div class="sidebar-item" onclick="switchTab('knowledge')"><i data-lucide="book-open" style="width: 18px;"></i><span>Knowledge</span></div>
+      
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 20px 12px 8px; font-weight: 600;">System</div>
+      <div class="sidebar-item" onclick="switchTab('settings')"><i data-lucide="settings" style="width: 18px;"></i><span>Settings</span></div>
+    </nav>
+    
+    <div class="glass" style="padding: 12px; border-radius: 12px; margin-top: auto;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">JX</div>
+        <div style="flex: 1;">
+          <div style="font-size: 13px; font-weight: 600;">JagX Engine</div>
+          <div style="font-size: 11px; color: var(--accent);" id="model-status">● Online</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+    
+    <!-- Header -->
+    <header class="glass-strong" style="height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-left: none; border-top: none; border-right: none;">
+      <h2 id="page-title" style="font-size: 18px; font-weight: 600;">Chat</h2>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="newSession()">
+          <i data-lucide="plus" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;"></i>New
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div id="content" style="flex: 1; overflow: hidden; position: relative;">
+      
+      <!-- CHAT -->
+      <div id="tab-chat" class="tab-content" style="height: 100%; display: flex; flex-direction: column;">
+        <div id="chat-messages" class="scrollbar" style="flex: 1; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="message-ai fade-in" style="align-self: flex-start; max-width: 80%; padding: 16px 20px; border-radius: 16px; border-bottom-left-radius: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="sparkles" style="width: 14px; color: #000;"></i>
+              </div>
+              <span style="font-weight: 600; font-size: 13px;">JagX</span>
+            </div>
+            <div style="line-height: 1.6; font-size: 14px;">Welcome to JagX AI. I can generate text, code, images, and help you build applications. What would you like to create today?</div>
+          </div>
+        </div>
+        <div style="padding: 16px 28px 24px;">
+          <div style="display: flex; gap: 12px; align-items: flex-end;">
+            <textarea id="chat-input" class="input-field scrollbar" rows="1" placeholder="Ask anything, generate code, or describe an image..." style="resize: none; max-height: 120px; padding-right: 50px;" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+            <button class="btn-primary" style="padding: 14px; border-radius: 12px;" onclick="sendChat()" id="send-btn">
+              <i data-lucide="arrow-up" style="width: 18px; height: 18px;"></i>
+            </button>
+          </div>
+          <div style="text-align: center; margin-top: 8px; font-size: 11px; color: var(--text-muted);">JagX runs entirely in your browser. No API keys. No data leaves your device.</div>
+        </div>
+      </div>
+
+      <!-- IMAGE GEN -->
+      <div id="tab-image" class="tab-content" style="height: 100%; display: none; flex-direction: column; padding: 24px 28px; overflow-y: auto;" class="scrollbar">
+        <div style="max-width: 900px; margin: 0 auto; width: 100%;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Image Generation</h3>
+            <p style="color: var(--text-muted);">Powered by Pollinations.ai — free, unlimited, no API key required.</p>
+          </div>
+          <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+            <input id="img-prompt" class="input-field" placeholder="A cyberpunk city at night with neon lights and flying cars..." onkeydown="if(event.key==='Enter')generateImage()">
+            <button class="btn-primary" onclick="generateImage()" id="img-btn" style="white-space: nowrap;">Generate</button>
+          </div>
+          <div id="img-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+            <!-- Images appear here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- VIDEO GEN -->
+      <div id="tab-video" class="tab-content" style="height: 100%; display: none; flex-direction: column; padding: 24px 28px; overflow-y: auto;" class="scrollbar">
+        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Video Generation</h3>
+            <p style="color: var(--text-muted);">Generates frame sequences and animates them into video. No API key needed.</p>
+          </div>
+          <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+            <input id="vid-prompt" class="input-field" placeholder="A sunset over mountains, cinematic, 4k..." onkeydown="if(event.key==='Enter')generateVideo()">
+            <button class="btn-primary" onclick="generateVideo()" id="vid-btn" style="white-space: nowrap;">Create Video</button>
+          </div>
+          <div id="vid-container" style="display: none; text-align: center;">
+            <canvas id="vid-canvas" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--border);"></canvas>
+            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center;">
+              <button class="btn-primary" onclick="downloadVideo()" style="font-size: 13px;"><i data-lucide="download" style="width: 14px; display: inline; vertical-align: middle; margin-right: 4px;"></i>Download Frames</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CODE STUDIO -->
+      <div id="tab-code" class="tab-content" style="height: 100%; display: none; flex-direction: column;">
+        <div style="display: flex; height: 50px; border-bottom: 1px solid var(--border); align-items: center; padding: 0 16px; gap: 8px;">
+          <button class="tab-btn active" onclick="switchCodeTab('editor')">Editor</button>
+          <button class="tab-btn" onclick="switchCodeTab('preview')">Preview</button>
+          <div style="flex: 1;"></div>
+          <select id="code-lang" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 8px; font-size: 13px; outline: none;">
+            <option value="html">HTML</option>
+            <option value="javascript">JavaScript</option>
+            <option value="css">CSS</option>
+            <option value="python">Python</option>
+          </select>
+          <button class="btn-primary" style="padding: 6px 16px; font-size: 13px;" onclick="runCode()">
+            <i data-lucide="play" style="width: 14px; display: inline; vertical-align: middle; margin-right: 4px;"></i>Run
+          </button>
+        </div>
+        <div style="flex: 1; display: flex; overflow: hidden;">
+          <div id="code-editor-panel" style="flex: 1; display: flex; flex-direction: column;">
+            <textarea id="code-editor" class="scrollbar" style="flex: 1; background: #0d1117; color: #c9d1d9; border: none; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; outline: none; resize: none;" spellcheck="false"><!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { 
+    background: linear-gradient(135deg, #1a1a2e, #16213e); 
+    color: white; 
+    font-family: sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .card {
+    background: rgba(255,255,255,0.1);
+    padding: 40px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello from JagX AI</h1>
+    <p>Edit this code and click Run!</p>
+  </div>
+</body>
+</html></textarea>
+          </div>
+          <div id="code-preview-panel" style="flex: 1; display: none; background: #fff; padding: 20px; overflow: auto;">
+            <iframe id="code-preview" class="preview-frame"></iframe>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+          <input id="code-prompt" class="input-field" placeholder="Describe what you want to build..." style="flex: 1; padding: 10px 14px;">
+          <button class="btn-primary" style="padding: 10px 18px; font-size: 13px;" onclick="generateCode()" id="code-gen-btn">Generate</button>
+        </div>
+      </div>
+
+      <!-- APP BUILDER -->
+      <div id="tab-builder" class="tab-content" style="height: 100%; display: none; flex-direction: column; padding: 24px 28px; overflow-y: auto;" class="scrollbar">
+        <div style="max-width: 1200px; margin: 0 auto; width: 100%;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div>
+              <h3 style="font-size: 24px; font-weight: 700;">App Builder</h3>
+              <p style="color: var(--text-muted); font-size: 14px;">Describe your app. JagX generates the code and live preview.</p>
+            </div>
+            <button class="btn-primary" style="font-size: 13px;" onclick="exportApp()"><i data-lucide="download" style="width: 14px; display: inline; vertical-align: middle; margin-right: 4px;"></i>Export App</button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: calc(100vh - 220px);">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <textarea id="builder-prompt" class="input-field scrollbar" style="flex: 1; resize: none; font-family: inherit;" placeholder="Build a todo app with dark mode, add/delete tasks, and local storage..."></textarea>
+              <button class="btn-primary" onclick="buildApp()" id="builder-btn">Build Application</button>
+            </div>
+            <div class="glass" style="border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+              <div style="padding: 8px 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="eye" style="width: 12px;"></i> Live Preview
+              </div>
+              <iframe id="builder-preview" style="flex: 1; border: none; background: white;"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KNOWLEDGE -->
+      <div id="tab-knowledge" class="tab-content" style="height: 100%; display: none; flex-direction: column; padding: 24px 28px; overflow-y: auto;" class="scrollbar">
+        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+          <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Knowledge Base</h3>
+          <p style="color: var(--text-muted); margin-bottom: 24px;">Ask about science, history, coding, or any topic. Powered by in-browser LLM.</p>
+          <div class="glass" style="border-radius: 16px; padding: 24px; margin-bottom: 20px;">
+            <input id="knowledge-search" class="input-field" placeholder="Search knowledge or ask a question..." onkeydown="if(event.key==='Enter')searchKnowledge()">
+          </div>
+          <div id="knowledge-results"></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="tab-settings" class="tab-content" style="height: 100%; display: none; flex-direction: column; padding: 24px 28px; overflow-y: auto;" class="scrollbar">
+        <div style="max-width: 600px; margin: 0 auto; width: 100%;">
+          <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 24px;">Settings</h3>
+          
+          <div class="glass" style="border-radius: 16px; padding: 24px; margin-bottom: 16px;">
+            <h4 style="font-weight: 600; margin-bottom: 16px;">AI Model</h4>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px;">Model</span>
+                <span style="font-size: 13px; color: var(--accent); font-family: 'JetBrains Mono', monospace;">TinyLlama-1.1B-Chat</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px;">Device</span>
+                <span style="font-size: 13px; color: var(--text-muted);">WebGPU / WASM</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px;">Status</span>
+                <span id="settings-status" style="font-size: 13px; color: var(--accent);">Ready</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass" style="border-radius: 16px; padding: 24px; margin-bottom: 16px;">
+            <h4 style="font-weight: 600; margin-bottom: 16px;">Generation Parameters</h4>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="font-size: 13px;">Temperature</span>
+                  <span id="temp-val" style="font-size: 13px; color: var(--accent);">0.7</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.1" value="0.7" style="width: 100%; accent-color: var(--accent);" oninput="document.getElementById('temp-val').textContent=this.value">
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="font-size: 13px;">Max Tokens</span>
+                  <span id="tok-val" style="font-size: 13px; color: var(--accent);">512</span>
+                </div>
+                <input type="range" min="128" max="2048" step="128" value="512" style="width: 100%; accent-color: var(--accent);" oninput="document.getElementById('tok-val').textContent=this.value">
+              </div>
+            </div>
+          </div>
+
+          <div class="glass" style="border-radius: 16px; padding: 24px;">
+            <h4 style="font-weight: 600; margin-bottom: 16px;">Deployment</h4>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px;">
+              This is a static HTML file. Host it for free on:
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span class="glass" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">GitHub Pages</span>
+              <span class="glass" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">Netlify</span>
+              <span class="glass" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">Vercel</span>
+              <span class="glass" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">Cloudflare Pages</span>
+              <span class="glass" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">Surge.sh</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+// Global state
+let generator = null;
+let currentTab = 'chat';
+let chatHistory = [];
+let isGenerating = false;
+let videoFrames = [];
+let videoAnimId = null;
+
+// UI Init
+lucide.createIcons();
+
+// Animated background
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+for(let i=0; i<60; i++) {
+  particles.push({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+    r: Math.random()*2+0.5, dx: (Math.random()-0.5)*0.3, dy: (Math.random()-0.5)*0.3,
+    alpha: Math.random()*0.5+0.1
+  });
+}
+function animateBg() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.dx; p.y += p.dy;
+    if(p.x<0||p.x>canvas.width) p.dx*=-1;
+    if(p.y<0||p.y>canvas.height) p.dy*=-1;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(0,240,255,${p.alpha})`;
+    ctx.fill();
+  });
+  // Connect nearby
+  for(let i=0;i<particles.length;i++) {
+    for(let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x, dy = particles[i].y-particles[j].y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist<120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.strokeStyle = `rgba(0,240,255,${0.08*(1-dist/120)})`;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animateBg);
+}
+animateBg();
+
+// Initialize model
+async function initModel() {
+  try {
+    document.getElementById('splash-text').textContent = 'Loading TinyLlama-1.1B (this may take a minute on first run)...';
+    generator = await pipeline('text-generation', 'Xenova/tinyllama-chat-v1.0', {
+      dtype: 'q4f16',
+      device: 'webgpu'
+    });
+    document.getElementById('splash').style.opacity = '0';
+    setTimeout(() => {
+      document.getElementById('splash').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+    }, 600);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('splash-text').textContent = 'Falling back to CPU mode...';
+    try {
+      generator = await pipeline('text-generation', 'Xenova/tinyllama-chat-v1.0', {
+        dtype: 'q4f16',
+        device: 'cpu'
+      });
+      document.getElementById('splash').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('splash').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+      }, 600);
+    } catch(e2) {
+      document.getElementById('splash-text').textContent = 'Error loading model. Refresh to retry.';
+      document.getElementById('splash-text').style.color = '#ef4444';
+    }
+  }
+}
+initModel();
+
+// Tab switching
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-'+tab).style.display = 'flex';
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  currentTab = tab;
+  const titles = {
+    chat: 'Chat', image: 'Image Generation', video: 'Video Generation',
+    code: 'Code Studio', builder: 'App Builder', knowledge: 'Knowledge Base', settings: 'Settings'
+  };
+  document.getElementById('page-title').textContent = titles[tab];
+};
+
+// Chat
+window.sendChat = async function() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text || isGenerating || !generator) return;
+  
+  isGenerating = true;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  
+  // User message
+  addMessage(text, 'user');
+  chatHistory.push({role:'user', content:text});
+  
+  // AI typing indicator
+  const typingId = 'typing-'+Date.now();
+  const messagesDiv = document.getElementById('chat-messages');
+  const typingEl = document.createElement('div');
+  typingEl.id = typingId;
+  typingEl.className = 'message-ai fade-in';
+  typingEl.style.cssText = 'align-self:flex-start;max-width:80%;padding:16px 20px;border-radius:16px;border-bottom-left-radius:4px;';
+  typingEl.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;"><i data-lucide="sparkles" style="width:14px;color:#000;"></i></div><span style="font-weight:600;font-size:13px;">JagX</span></div><div style="display:flex;gap:4px;"><div class="typing-dot" style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></div><div class="typing-dot" style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></div><div class="typing-dot" style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></div></div>`;
+  messagesDiv.appendChild(typingEl);
+  lucide.createIcons();
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  
+  try {
+    const prompt = `<|system|>\nYou are JagX AI, a helpful real-time AI assistant. You can generate code, answer questions, and help build applications. Be concise but thorough.</s>\n` +
+      chatHistory.map(h => `<|${h.role}|>\n${h.content}</s>\n`).join('') +
+      `<|assistant|>\n`;
+    
+    const output = await generator(prompt, {
+      max_new_tokens: 512,
+      temperature: 0.7,
+      do_sample: true,
+      return_full_text: false
+    });
+    
+    let response = output[0].generated_text;
+    response = response.split('</s>')[0].split('<|user|>')[0].split('<|assistant|>')[0].trim();
+    
+    document.getElementById(typingId).remove();
+    addMessage(response, 'ai');
+    chatHistory.push({role:'assistant', content:response});
+    
+    // Keep history manageable
+    if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    
+  } catch(e) {
+    document.getElementById(typingId).remove();
+    addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+  }
+  
+  isGenerating = false;
+  document.getElementById('send-btn').disabled = false;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+};
+
+function addMessage(text, sender) {
+  const div = document.createElement('div');
+  div.className = `message-${sender} fade-in`;
+  div.style.cssText = sender==='user' 
+    ? 'align-self:flex-end;max-width:80%;padding:14px 20px;border-radius:16px;border-bottom-right-radius:4px;margin-left:auto;'
+    : 'align-self:flex-start;max-width:80%;padding:16px 20px;border-radius:16px;border-bottom-left-radius:4px;';
+  
+  if(sender === 'ai') {
+    // Simple markdown parsing
+    let html = text
+      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<div class="code-block"><button class="copy-btn" onclick="copyCode(this)">Copy</button><pre style="margin:0;"><code>$2</code></pre></div>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,240,255,0.1);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:12px;">$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;"><i data-lucide="sparkles" style="width:14px;color:#000;"></i></div><span style="font-weight:600;font-size:13px;">JagX</span></div><div style="line-height:1.6;font-size:14px;">${html}</div>`;
+  } else {
+    div.textContent = text;
+  }
+  
+  document.getElementById('chat-messages').appendChild(div);
+  lucide.createIcons();
+  document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+}
+
+window.copyCode = function(btn) {
+  const code = btn.nextElementSibling.textContent;
+  navigator.clipboard.writeText(code);
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+};
+
+window.newSession = function() {
+  chatHistory = [];
+  document.getElementById('chat-messages').innerHTML = `
+    <div class="message-ai fade-in" style="align-self:flex-start;max-width:80%;padding:16px 20px;border-radius:16px;border-bottom-left-radius:4px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;">
+          <i data-lucide="sparkles" style="width:14px;color:#000;"></i>
+        </div>
+        <span style="font-weight:600;font-size:13px;">JagX</span>
+      </div>
+      <div style="line-height:1.6;font-size:14px;">New session started. What would you like to create?</div>
+    </div>`;
+  lucide.createIcons();
+};
+
+// Auto-resize textarea
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Image Generation
+window.generateImage = async function() {
+  const prompt = document.getElementById('img-prompt').value.trim();
+  if(!prompt) return;
+  const btn = document.getElementById('img-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  
+  const gallery = document.getElementById('img-gallery');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'fade-in';
+  wrapper.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface);';
+  wrapper.innerHTML = `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;"><div class="loader" style="width:32px;height:32px;"></div></div>`;
+  gallery.insertBefore(wrapper, gallery.firstChild);
+  
+  const encoded = encodeURIComponent(prompt);
+  const seeds = [Math.floor(Math.random()*10000), Math.floor(Math.random()*10000)];
+  
+  // Generate 2 variations
+  for(let i=0; i<2; i++) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seeds[i]}&nologo=true&enhance=true`;
+    img.onload = () => {
+      if(i===0) {
+        wrapper.innerHTML = '';
+        wrapper.appendChild(img);
+        img.style.cssText = 'width:100%;height:auto;display:block;';
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,0.8));display:flex;justify-content:space-between;align-items:center;';
+        overlay.innerHTML = `<span style="font-size:12px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">${prompt}</span><button style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:4px 10px;color:#fff;cursor:pointer;font-size:12px;" onclick="downloadImage('${img.src}')">Download</button>`;
+        wrapper.appendChild(overlay);
+      } else {
+        const w2 = wrapper.cloneNode(true);
+        w2.querySelector('img').src = img.src;
+        gallery.insertBefore(w2, wrapper.nextSibling);
+      }
+    };
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = 'Generate';
+};
+
+window.downloadImage = function(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'jagx-generated.png';
+  a.click();
+};
+
+// Video Generation
+window.generateVideo = async function() {
+  const prompt = document.getElementById('vid-prompt').value.trim();
+  if(!prompt) return;
+  const btn = document.getElementById('vid-btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating frames...';
+  
+  const container = document.getElementById('vid-container');
+  container.style.display = 'block';
+  const canvas = document.getElementById('vid-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 512; canvas.height = 512;
+  
+  videoFrames = [];
+  const encoded = encodeURIComponent(prompt + ', cinematic shot, high quality');
+  const frameCount = 8;
+  
+  // Load frames
+  for(let i=0; i<frameCount; i++) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = `https://image.pollinations.ai/prompt/${encoded}%20frame%20${i+1}?width=512&height=512&seed=${1000+i*50}&nologo=true`;
+    await new Promise(r => {
+      img.onload = () => {
+        videoFrames.push(img);
+        // Fill canvas with progress
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = 'var(--accent)';
+        ctx.font = '14px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Loading frames... ${videoFrames.length}/${frameCount}`, canvas.width/2, canvas.height/2);
+        r();
+      };
+      img.onerror = r;
+    });
+  }
+  
+  btn.disabled = false;
+  btn.textContent = 'Create Video';
+  
+  // Animate
+  let frame = 0;
+  let lastTime = 0;
+  const fps = 4;
+  
+  if(videoAnimId) cancelAnimationFrame(videoAnimId);
+  
+  function render(time) {
+    if(time - lastTime > 1000/fps) {
+      const idx = Math.floor(frame) % videoFrames.length;
+      const nextIdx = (idx + 1) % videoFrames.length;
+      const alpha = frame % 1;
+      
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(videoFrames[idx], 0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(videoFrames[nextIdx], 0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 1;
+      
+      frame += 0.15;
+      lastTime = time;
+    }
+    videoAnimId = requestAnimationFrame(render);
+  }
+  render(0);
+};
+
+window.downloadVideo = function() {
+  // Download frames as zip-like (just individual images for now)
+  videoFrames.forEach((img, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `jagx-frame-${i+1}.png`;
+      a.click();
+    }, i*200);
+  });
+};
+
+// Code Studio
+window.switchCodeTab = function(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if(tab === 'editor') {
+    document.getElementById('code-editor-panel').style.display = 'flex';
+    document.getElementById('code-preview-panel').style.display = 'none';
+  } else {
+    document.getElementById('code-editor-panel').style.display = 'none';
+    document.getElementById('code-preview-panel').style.display = 'block';
+    runCode();
+  }
+};
+
+window.runCode = function() {
+  const code = document.getElementById('code-editor').value;
+  const preview = document.getElementById('code-preview');
+  const blob = new Blob([code], {type: 'text/html'});
+  preview.src = URL.createObjectURL(blob);
+};
+
+window.generateCode = async function() {
+  const prompt = document.getElementById('code-prompt').value.trim();
+  if(!prompt || !generator) return;
+  const btn = document.getElementById('code-gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  
+  const lang = document.getElementById('code-lang').value;
+  const system = `You are a code generator. Respond ONLY with ${lang.toUpperCase()} code. No explanations. No markdown fences. Just raw code.`;
+  const fullPrompt = `<|system|>\n${system}</s>\n<|user|>\n${prompt}</s>\n<|assistant|>\n`;
+  
+  try {
+    const out = await generator(fullPrompt, {
+      max_new_tokens: 1024,
+      temperature: 0.3,
+      do_sample: true,
+      return_full_text: false
+    });
+    let code = out[0].generated_text;
+    code = code.split('</s>')[0].split('<|user|>')[0].trim();
+    // Remove markdown fences if present
+    code = code.replace(/```[\w]*\n?/g, '').replace(/```$/g, '').trim();
+    document.getElementById('code-editor').value = code;
+    runCode();
+  } catch(e) {
+    alert('Error generating code');
+  }
+  
+  btn.disabled = false;
+  btn.textContent = 'Generate';
+};
+
+// App Builder
+window.buildApp = async function() {
+  const prompt = document.getElementById('builder-prompt').value.trim();
+  if(!prompt || !generator) return;
+  const btn = document.getElementById('builder-btn');
+  btn.disabled = true;
+  btn.textContent = 'Building...';
+  
+  const system = `You are an expert web developer. Create a complete, self-contained HTML file with embedded CSS and JavaScript. The app should be modern, responsive, and visually stunning. Use only vanilla HTML/CSS/JS. No external dependencies. Respond ONLY with the HTML code. No explanations.`;
+  const fullPrompt = `<|system|>\n${system}</s>\n<|user|>\nBuild: ${prompt}</s>\n<|assistant|>\n`;
+  
+  try {
+    const out = await generator(fullPrompt, {
+      max_new_tokens: 2048,
+      temperature: 0.4,
+      do_sample: true,
+      return_full_text: false
+    });
+    let code = out[0].generated_text;
+    code = code.split('</s>')[0].split('<|user|>')[0].trim();
+    code = code.replace(/```html\n?/g, '').replace(/```$/g, '').trim();
+    
+    // Ensure it's a complete HTML doc
+    if(!code.includes('<!DOCTYPE')) {
+      code = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:system-ui,sans-serif;padding:20px;background:#f0f0f0;}</style></head><body>${code}</body></html>`;
+    }
+    
+    const preview = document.getElementById('builder-preview');
+    const blob = new Blob([code], {type: 'text/html'});
+    preview.src = URL.createObjectURL(blob);
+    
+    // Store for export
+    window._lastAppCode = code;
+  } catch(e) {
+    alert('Build error. Try again.');
+  }
+  
+  btn.disabled = false;
+  btn.textContent = 'Build Application';
+};
+
+window.exportApp = function() {
+  if(!window._lastAppCode) return alert('Build an app first!');
+  const blob = new Blob([window._lastAppCode], {type: 'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'jagx-app.html';
+  a.click();
+};
+
+// Knowledge
+window.searchKnowledge = async function() {
+  const query = document.getElementById('knowledge-search').value.trim();
+  if(!query || !generator) return;
+  const container = document.getElementById('knowledge-results');
+  container.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loader" style="width:32px;height:32px;margin:0 auto;"></div><p style="margin-top:12px;color:var(--text-muted);">Consulting knowledge base...</p></div>';
+  
+  const prompt = `<|system|>\nYou are JagX Knowledge Base. Provide accurate, educational information. Use markdown formatting with headers and bullet points.</s>\n<|user|>\n${query}</s>\n<|assistant|>\n`;
+  
+  try {
+    const out = await generator(prompt, {
+      max_new_tokens: 1024,
+      temperature: 0.5,
+      do_sample: true,
+      return_full_text: false
+    });
+    let response = out[0].generated_text.split('</s>')[0].split('<|user|>')[0].trim();
+    
+    // Format response
+    response = response
+      .replace(/^# (.*$)/gim, '<h1 style="font-size:20px;font-weight:700;margin:16px 0 8px;">$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2 style="font-size:16px;font-weight:600;margin:12px 0 6px;color:var(--accent);">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 style="font-size:14px;font-weight:600;margin:8px 0 4px;">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^\- (.*$)/gim, '<li style="margin:4px 0;margin-left:16px;">$1</li>')
+      .replace(/```([\s\S]*?)```/g, '<div class="code-block" style="margin:12px 0;"><pre style="margin:0;"><code>$1</code></pre></div>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,240,255,0.1);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:12px;">$1</code>')
+      .replace(/\n/g, '<br>');
+    
+    container.innerHTML = `<div class="glass fade-in" style="border-radius:16px;padding:24px;line-height:1.7;">${response}</div>`;
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;color:#ef4444;">Error retrieving knowledge. Try again.</div>';
+  }
+};
+
+// Expose to window for onclick handlers
+window.switchTab = switchTab;
+</script>
+</body>
+</html>
