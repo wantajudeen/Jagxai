@@ -6,7 +6,6 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rnd = () => Math.floor(Math.random() * 1e6);
 
-/* ---------- toasts ---------- */
 function toast(msg, type = 'info'){
   const t = document.createElement('div');
   t.className = 'toast ' + type; t.textContent = msg;
@@ -31,7 +30,7 @@ function go(v){
 $$('.nav-btn').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
 $('#menuBtn').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
 
-/* ---------- realtime streaming chat relay ---------- */
+/* ---------- streaming ---------- */
 async function streamChat(messages, onDelta){
   const res = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages }) });
   if(!res.ok) throw new Error('chat ' + res.status);
@@ -56,7 +55,7 @@ async function streamChat(messages, onDelta){
   }
 }
 
-/* ================= CHAT ================= */
+/* ================= CHAT (with auto-retry) ================= */
 const msgs = $('#msgs'), chatInput = $('#chatInput');
 let history = [], voiceOn = false, busy = false;
 
@@ -105,6 +104,7 @@ function speak(t){
   speechSynthesis.cancel();
   speechSynthesis.speak(new SpeechSynthesisUtterance(clean));
 }
+const DOTS = '<div class="dots"><i></i><i></i><i></i></div>';
 async function sendChat(text){
   text = (text || '').trim();
   if(busy || !text) return;
@@ -112,9 +112,9 @@ async function sendChat(text){
   $('.welcome')?.remove();
   addMsg('user', `<div class="md">${esc(text)}</div>`);
   history.push({ role:'user', content:text });
-  const bubble = $('.bubble', addMsg('ai', '<div class="dots"><i></i><i></i><i></i></div>'));
+  const bubble = $('.bubble', addMsg('ai', DOTS));
   let full = '';
-  try{
+  const run = async () => {
     await streamChat(history.slice(-14), d => {
       if(!full) bubble.innerHTML = '<div class="md streaming"></div>';
       full += d;
@@ -122,13 +122,22 @@ async function sendChat(text){
       msgs.scrollTop = msgs.scrollHeight;
     });
     if(!full) throw 0;
+  };
+  try{
+    try{ await run(); }
+    catch(e){
+      full = ''; $('#aiState').textContent = 'retrying…';
+      await new Promise(r => setTimeout(r, 900));
+      bubble.innerHTML = DOTS;
+      await run();
+    }
     bubble.innerHTML = '<div class="md"></div>';
     renderMD($('.md', bubble), full);
     history.push({ role:'assistant', content: full });
     $('#aiState').textContent = 'online — ready to advise you';
     speak(full);
   }catch(e){
-    bubble.innerHTML = '<div class="md err">⚠️ The free relay is busy — please retry in a moment.</div>';
+    bubble.innerHTML = '<div class="md err">⚠️ The free relays are crowded right now. Wait ~10 seconds and send again — it recovers on its own.</div>';
     $('#aiState').textContent = 'online';
   }
   msgs.scrollTop = msgs.scrollHeight;
@@ -150,27 +159,29 @@ $('#micBtn').onclick = () => {
   const r = new SR(); r.lang = 'en-US';
   r.onresult = e => { chatInput.value = e.results[0][0].transcript; toast('🎙 Heard you'); };
   r.onerror = () => toast('Mic error', 'warn');
-  r.start(); toast(' Listening…');
+  r.start(); toast('Listening…');
 };
 
-/* ================= IMAGES ================= */
+/* ================= IMAGES (with retry button) ================= */
 const STYLES = { none:'', photo:'ultra realistic photography, 50mm lens, natural light', anime:'anime style, vibrant, studio quality', cyber:'cyberpunk neon lighting, futuristic', threeD:'3d render, octane, cinematic lighting', art:'oil painting, expressive brushstrokes' };
 function makeImgCard(p, style, w, h){
   const card = document.createElement('div'); card.className = 'img-card';
   card.innerHTML = '<div class="img-skel"></div>';
   $('#imgGrid').prepend(card);
-  const seed = rnd();
-  const url = `/api/image?prompt=${encodeURIComponent(p + (style ? ', ' + style : ''))}&width=${w}&height=${h}&seed=${seed}`;
+  const url = `/api/image?prompt=${encodeURIComponent(p + (style ? ', ' + style : ''))}&width=${w}&height=${h}&seed=${rnd()}`;
   const img = new Image(); img.alt = p;
   img.onload = () => {
     card.innerHTML = ''; card.appendChild(img);
     const bar = document.createElement('div'); bar.className = 'img-bar';
     bar.innerHTML = '<button class="mini re">↻ Regen</button><button class="mini dl">⬇ Download</button>';
     card.appendChild(bar);
-    $('.dl', bar).onclick = async () => saveBlob(await (await fetch(url)).blob(), `jagx-${seed}.jpg`);
+    $('.dl', bar).onclick = async () => saveBlob(await (await fetch(url)).blob(), `jagx-${rnd()}.jpg`);
     $('.re', bar).onclick = () => { card.remove(); makeImgCard(p, style, w, h); };
   };
-  img.onerror = () => { card.innerHTML = '<div class="img-err">⚠️ Failed — hover-free retry: regen</div>'; };
+  img.onerror = () => {
+    card.innerHTML = '<div class="img-err">⚠️ Failed <button class="mini">Retry</button></div>';
+    $('.mini', card).onclick = () => { card.remove(); makeImgCard(p, style, w, h); };
+  };
   img.src = url;
 }
 $('#imgBtn').onclick = () => {
@@ -179,10 +190,10 @@ $('#imgBtn').onclick = () => {
   const [w, h] = $('#imgRatio').value.split('x').map(Number);
   const n = +$('#imgCount').value, style = STYLES[$('#imgStyle').value];
   for(let i = 0; i < n; i++) makeImgCard(p, style, w, h);
-  toast(`⚡ Painting ${n} image${n > 1 ? 's' : ''}…`);
+  toast(`⚡ Painting ${n} image${n > 1 ? 's' : ''}… (free relays can take ~20s each)`);
 };
 
-/* ================= VIDEO ================= */
+/* ================= VIDEO (validated frames) ================= */
 $('#vidBtn').onclick = async () => {
   const p = $('#vidPrompt').value.trim();
   if(!p) return toast('Describe your video first', 'warn');
@@ -199,13 +210,15 @@ $('#vidBtn').onclick = async () => {
     let scenes;
     try{ scenes = JSON.parse((raw.match(/\[[\s\S]*\]/) || ['[]'])[0]); }catch{ scenes = []; }
     if(!Array.isArray(scenes) || !scenes.length) scenes = raw.split('\n').map(s => s.replace(/^[^a-zA-Z0-9"]+/, '')).filter(Boolean).slice(0, n);
+    if(!scenes.length) throw 0;
     const blobs = [];
     for(let i = 0; i < scenes.length; i++){
-      st.textContent = `🎨 Painting scene ${i + 1}/${scenes.length}…`;
+      st.textContent = `🎨 Painting scene ${i + 1}/${scenes.length}… (free relays, be patient)`;
       prog.style.width = (10 + (i / scenes.length) * 60) + '%';
-      const r = await fetch(`/api/image?prompt=${encodeURIComponent(scenes[i])}&width=1280&height=720&model=turbo&seed=${rnd()}`);
-      if(!r.ok) throw 0;
-      blobs.push(await r.blob());
+      const r = await fetch(`/api/image?prompt=${encodeURIComponent(scenes[i])}&width=1280&height=720&seed=${rnd()}`);
+      const blob = await r.blob();
+      if(!r.ok || !blob.type.startsWith('image/') || blob.size < 8000) throw 0;
+      blobs.push(blob);
     }
     st.textContent = '🎥 Directing, animating & recording…'; prog.style.width = '82%';
     const { url, ext } = await compileVideo(blobs, scenes, p);
@@ -214,7 +227,7 @@ $('#vidBtn').onclick = async () => {
     const v = document.createElement('video'); v.controls = true; v.src = url; box.appendChild(v);
     const a = document.createElement('a'); a.href = url; a.download = 'jagx-video.' + ext; a.className = 'btn-grad'; a.textContent = '⬇ Download video'; box.appendChild(a);
     toast('🎬 Video complete!');
-  }catch(e){ st.textContent = '⚠️ Something failed — please retry.'; }
+  }catch(e){ st.textContent = '⚠️ A free image relay refused a frame — press Generate again.'; }
   btn.disabled = false;
 };
 function compileVideo(blobs, captions, title){
@@ -233,11 +246,11 @@ function compileVideo(blobs, captions, title){
       const total = INTRO + imgs.length * SCENE + OUTRO;
       const grad = ctx.createLinearGradient(0, 0, W, H);
       grad.addColorStop(0, '#8b5cf6'); grad.addColorStop(1, '#22d3ee');
-      const cover = (img, scale, ox, oy) => {
+      const cover = (img, scale, ox) => {
         const ir = img.width / img.height, cr = W / H;
         let dw, dh;
         if(ir > cr){ dh = H * scale; dw = dh * ir; } else { dw = W * scale; dh = dw / ir; }
-        ctx.drawImage(img, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
+        ctx.drawImage(img, (W - dw) / 2 + ox, (H - dh) / 2, dw, dh);
       };
       const wrap = (text, y, max) => {
         const words = text.split(' '); let line = '', yy = y;
@@ -252,9 +265,9 @@ function compileVideo(blobs, captions, title){
         ctx.fillStyle = '#05060a'; ctx.fillRect(0, 0, W, H);
         ctx.globalAlpha = a; ctx.textAlign = 'center';
         ctx.fillStyle = grad; ctx.font = '700 30px "Space Grotesk", sans-serif';
-        ctx.fillText(sub, W / 2, H / 2 - 70);
-        ctx.fillStyle = '#fff'; ctx.font = '700 52px "Space Grotesk", sans-serif';
-        wrap(txt, H / 2, W - 240);
+        ctx.fillText(sub, W / 2, H / 2 - 90);
+        ctx.fillStyle = '#fff'; ctx.font = '700 46px "Space Grotesk", sans-serif';
+        wrap(txt, H / 2 - 10, W - 240);
         ctx.globalAlpha = 1;
       };
       rec.start(250);
@@ -266,8 +279,7 @@ function compileVideo(blobs, captions, title){
           titleCard(title, 'JagX AI presents', Math.min(1, t / 700));
         } else if(t < INTRO + imgs.length * SCENE){
           const lt = t - INTRO, idx = Math.min(imgs.length - 1, Math.floor(lt / SCENE)), stt = (lt % SCENE) / SCENE;
-          cover(imgs[idx], 1.06 + 0.12 * stt, (stt - .5) * 60, 0);
-          ctx.fillStyle = 'rgba(5,6,10,.85)';
+          cover(imgs[idx], 1.06 + 0.12 * stt, (stt - .5) * 60);
           if(lt % SCENE < FADE){ ctx.globalAlpha = 1 - (lt % SCENE) / FADE; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
           if(SCENE - (lt % SCENE) < FADE){ ctx.globalAlpha = ((lt % SCENE) - (SCENE - FADE)) / FADE; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
           const g2 = ctx.createLinearGradient(0, H - 130, 0, H);
@@ -362,11 +374,4 @@ $('#genKeyBtn').onclick = async () => {
 function renderKeys(){
   const list = JSON.parse(localStorage.getItem('jagx-keys') || '[]');
   $('#keyList').innerHTML = list.map((k, i) => `<div class="key-row"><b>${esc(k.name)}</b><span>${k.key}</span>
-    <button class="mini cp" data-i="${i}">Copy</button><button class="mini rm" data-i="${i}">Delete</button></div>`).join('') || '<p class="hint">No keys yet — generate one above.</p>';
-  $$('.cp', $('#keyList')).forEach(b => b.onclick = () => { navigator.clipboard.writeText(list[b.dataset.i].key); toast('Key copied ✓'); });
-  $$('.rm', $('#keyList')).forEach(b => b.onclick = () => { list.splice(b.dataset.i, 1); localStorage.setItem('jagx-keys', JSON.stringify(list)); renderKeys(); });
-}
-renderKeys();
-
-/* highlight static docs */
-$$('pre code.language-bash').forEach(c => window.hljs && hljs.highlightElement(c));
+    <button class="mini cp" data-i="${i}">Copy</button><button class="mini rm" data-i="${i}">Delete</button></div>`).join(''
