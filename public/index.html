@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JagX AI — Realtime Free AI</title>
+<meta name="description" content="JagX AI: realtime chat, advice, images, video, code & site building. 100% free, no sign-up, open API.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='%238b5cf6'/><stop offset='1' stop-color='%2322d3ee'/></linearGradient></defs><rect width='64' height='64' rx='16' fill='url(%23g)'/><text x='32' y='44' font-size='34' font-family='Arial' font-weight='bold' text-anchor='middle' fill='white'>J</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="orbs"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-orb">J</div>
+      <div><h1>JagX <span>AI</span></h1><p>Realtime • Free • Open</p></div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="chat"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button>
+      <button class="nav-btn" data-view="images"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Image Studio</button>
+      <button class="nav-btn" data-view="video"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Video Studio</button>
+      <button class="nav-btn" data-view="builder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Site & App Builder</button>
+      <button class="nav-btn" data-view="code"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Code Engine</button>
+      <button class="nav-btn" data-view="keys"><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>API Keys</button>
+    </nav>
+    <div class="side-foot">
+      <div class="status"><i></i>All systems free & online</div>
+      <p>No API keys • No sign-up • No paywall</p>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <button id="menuBtn" class="icon-btn" aria-label="menu"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <h2 id="viewTitle">Realtime Chat</h2>
+      <div class="head-badges">
+        <span class="badge">100% Free</span><span class="badge">Realtime</span><span class="badge green">Open Access</span>
+      </div>
+    </header>
+
+    <!-- ============ CHAT ============ -->
+    <section id="view-chat" class="view active">
+      <div class="chat-wrap">
+        <div class="chat-head">
+          <div class="ai-face"><div class="orb"></div><div><strong>JagX</strong><p id="aiState">online — ready to advise you</p></div></div>
+          <div class="chat-actions">
+            <button id="voiceBtn" class="toggle" title="JagX speaks replies aloud"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg><span>Voice</span></button>
+            <button id="clearBtn" class="icon-btn" title="Clear chat"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+        <div class="msgs" id="msgs"></div>
+        <div class="composer">
+          <button id="micBtn" class="icon-btn" title="Speak to JagX"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></button>
+          <textarea id="chatInput" rows="1" placeholder="Ask JagX anything — it advises, explains, codes…"></textarea>
+          <button id="sendBtn" class="btn-grad" title="Send"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ IMAGES ============ -->
+    <section id="view-images" class="view">
+      <div class="studio">
+        <div class="card controls">
+          <textarea id="imgPrompt" rows="2" placeholder="Describe your image… e.g. “a neon jaguar walking through rainy Tokyo streets”"></textarea>
+          <div class="row">
+            <select id="imgStyle"><option value="none">No style</option><option value="photo">Photoreal</option><option value="anime">Anime</option><option value="cyber">Cyberpunk</option><option value="threeD">3D Render</option><option value="art">Oil Painting</option></select>
+            <select id="imgRatio"><option value="1024x1024">Square 1:1</option><option value="1280x720">Wide 16:9</option><option value="720x1280">Tall 9:16</option></select>
+            <select id="imgCount"><option value="1">1 image</option><option value="2">2 images</option><option value="4" selected>4 images</option></select>
+            <button id="imgBtn" class="btn-grad">⚡ Generate</button>
+          </div>
+        </div>
+        <div class="img-grid" id="imgGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ VIDEO ============ -->
+    <section id="view-video" class="view">
+      <div class="studio">
+        <div class="card controls">
+          <textarea id="vidPrompt" rows="2" placeholder="Describe your video… e.g. “a journey from deep ocean to outer space”"></textarea>
+          <div class="row">
+            <select id="vidScenes"><option value="3">3 scenes</option><option value="4" selected>4 scenes</option><option value="5">5 scenes</option><option value="6">6 scenes</option></select>
+            <button id="vidBtn" class="btn-grad">🎬 Generate Video</button>
+          </div>
+          <div class="prog" id="vidProgWrap" hidden><div class="prog-bar" id="vidProg"></div><p id="vidStatus">…</p></div>
+        </div>
+        <div class="vid-result" id="vidResult"></div>
+      </div>
+    </section>
+
+    <!-- ============ BUILDER ============ -->
+    <section id="view-builder" class="view">
+      <div class="studio">
+        <div class="card controls">
+          <textarea id="buildPrompt" rows="2" placeholder="Describe a site or app… e.g. “a landing page for my coffee brand with pricing & contact form”"></textarea>
+          <div class="row"><button id="buildBtn" class="btn-grad">🏗️ Build It</button><span id="buildStatus" class="hint"></span></div>
+        </div>
+        <div class="card out" id="buildOut" hidden>
+          <div class="out-bar">
+            <div class="tabs"><button class="tab active" data-tab="preview">Preview</button><button class="tab" data-tab="code">Code</button></div>
+            <div class="tools">
+              <button id="bRerun" class="mini" title="Refresh preview"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+              <button id="bOpen" class="mini">Open ↗</button>
+              <button id="bCopy" class="mini">Copy</button>
+              <button id="bDl" class="mini btn-grad">Download</button>
+            </div>
+          </div>
+          <iframe id="buildFrame" class="frame" sandbox="allow-scripts allow-modals allow-forms"></iframe>
+          <pre id="buildCode" class="frame-code" hidden><code class="language-html"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CODE ============ -->
+    <section id="view-code" class="view">
+      <div class="studio">
+        <div class="card controls">
+          <textarea id="codePrompt" rows="2" placeholder="What should JagX code? e.g. “a Python web scraper with retries & CSV export”"></textarea>
+          <div class="row">
+            <select id="codeLang"><option>javascript</option><option>typescript</option><option selected>python</option><option>html</option><option>css</option><option>java</option><option>cpp</option><option>go</option><option>rust</option><option>php</option><option>ruby</option><option>swift</option><option>kotlin</option><option>sql</option><option>bash</option></select>
+            <button id="codeBtn" class="btn-grad">⌨️ Generate Code</button>
+          </div>
+        </div>
+        <div class="card out code-out" id="codeOut" hidden>
+          <div class="out-bar"><span class="hint" id="codeStatus">code</span>
+            <div class="tools"><button id="cCopy" class="mini">Copy</button><button id="cDl" class="mini btn-grad">Download</button></div>
+          </div>
+          <pre class="frame-code"><code id="codeBlock"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ KEYS ============ -->
+    <section id="view-keys" class="view">
+      <div class="studio keys">
+        <div class="card controls">
+          <h3>🔑 Generate your free JagX API key</h3>
+          <p class="hint">No account. No email. Keys are cryptographically signed & verified statelessly — use them in your own apps.</p>
+          <div class="row"><input id="keyName" class="field" placeholder="Key name (e.g. my-app)"><button id="genKeyBtn" class="btn-grad">Generate Key</button></div>
+          <div id="keyList" class="key-list"></div>
+        </div>
+        <div class="card controls">
+          <h3>📡 Use the JagX API</h3>
+          <pre class="frame-code small"><code class="language-bash"># Chat
+curl -X POST https://YOUR-JAGX-URL/v1/chat \
+  -H "Content-Type: application/json" \
+  -H "x-jagx-key: YOUR_KEY" \
+  -d '{"messages":[{"role":"user","content":"Hello JagX!"}]}'
+
+# Image
+curl "https://YOUR-JAGX-URL/v1/image?prompt=neon%20jaguar" \
+  -H "x-jagx-key: YOUR_KEY" --output img.jpg</code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toasts"></div>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="app.js"></script>
+</body>
+                                                                                                                                        </html>
